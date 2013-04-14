@@ -35,6 +35,10 @@ namespace Smuxi.Frontend.Gnome
         //private Gtk.Menu     _QueryTabMenu;
         private TaskQueue f_SwitchPageQueue;
         private bool      f_IsBrowseModeEnabled;
+        bool f_IsCompactModeEnabled;
+
+        GLib.Value? OriginalTabHBorder { get; set; }
+        GLib.Value? OriginalTabVBorder { get; set; }
 
         public ChatView CurrentChatView {
             get {
@@ -68,6 +72,39 @@ namespace Smuxi.Frontend.Gnome
                     var chat = CurrentChatView;
                     CurrentChatView = null;
                     CurrentChatView = chat;
+                }
+            }
+        }
+
+        public bool IsCompactModeEnabled {
+            get {
+                return f_IsCompactModeEnabled;
+            }
+            set {
+                if (f_IsCompactModeEnabled == value) {
+                    // compact mode already enabled, nothing to do
+                    return;
+                }
+                f_IsCompactModeEnabled = value;
+
+                if (value) {
+#if LOG4NET
+                    f_Logger.Debug("set_IsCompactModeEnabled(): enabling compact mode...");
+#endif
+                    OriginalTabHBorder = GetProperty("tab-hborder");
+                    OriginalTabVBorder = GetProperty("tab-vborder");
+                    SetProperty("tab-hborder", new GLib.Value(0));
+                    SetProperty("tab-vborder", new GLib.Value(0));
+                } else {
+#if LOG4NET
+                    f_Logger.Debug("set_IsCompactModeEnabled(): disabling compact mode...");
+#endif
+                    if (OriginalTabHBorder.HasValue) {
+                        SetProperty("tab-hborder", OriginalTabHBorder.Value);
+                    }
+                    if (OriginalTabVBorder.HasValue) {
+                        SetProperty("tab-vborder", OriginalTabVBorder.Value);
+                    }
                 }
             }
         }

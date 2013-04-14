@@ -53,6 +53,7 @@ namespace Smuxi.Frontend.Gnome
         private   MessageTextView    _OutputMessageTextView;
         private   ThemeSettings      _ThemeSettings;
         private   TaskQueue          _LastSeenHighlightQueue;
+        bool f_IsCompactModeEnabled;
         public    DateTime           SyncedLastSeenHighlight { get; private set; }
         IList<MessageModel>          SyncedMessages { get; set; }
         protected string             SyncedName { get; set; }
@@ -88,6 +89,30 @@ namespace Smuxi.Frontend.Gnome
                             Frontend.MainWindow.Notebook.CurrentChatView,
                             this
                         );
+            }
+        }
+
+        public bool IsCompactModeEnabled {
+            get {
+                return f_IsCompactModeEnabled;
+            }
+            set {
+                if (f_IsCompactModeEnabled == value) {
+                    // compact mode already enabled, nothing to do
+                    return;
+                }
+                f_IsCompactModeEnabled = value;
+
+                Pango.FontDescription font;
+                if (value) {
+                    // reduce font size
+                    font = PangoContext.FontDescription;
+                    font.Size = (int) (font.Size * Pango.Scale.Small);
+                } else {
+                    // reset font size
+                    font = new Pango.FontDescription();
+                }
+                _TabLabel.ModifyFont(font);
             }
         }
 

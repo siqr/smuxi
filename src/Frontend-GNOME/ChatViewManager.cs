@@ -21,6 +21,7 @@
  */
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Globalization;
 
@@ -139,6 +140,8 @@ namespace Smuxi.Frontend.Gnome
             f_Notebook.RemovePage(f_Notebook.PageNum(chatView));
             f_Chats.Remove(chatView);
             SyncedChats.Remove(chatView);
+
+            CheckTabSizes();
 
             if (ChatRemoved != null) {
                 ChatRemoved(this, new ChatViewManagerChatRemovedEventArgs(chatView));
@@ -276,6 +279,7 @@ namespace Smuxi.Frontend.Gnome
 #if GTK_SHARP_2_10
                 f_Notebook.SetTabReorderable(chatView, true);
 #endif
+                CheckTabSizes();
 
                 if ((chatView is PersonChatView && AutoSwitchPersonChats) ||
                     (chatView is GroupChatView && AutoSwitchGroupChats)) {
@@ -401,6 +405,34 @@ namespace Smuxi.Frontend.Gnome
             }
 
             return idx;
+        }
+
+        void CheckTabSizes()
+        {
+            Trace.Call();
+
+            if (f_Chats.Count == 0) {
+                // nothing to check
+                return;
+            }
+
+            var allTabsVisible = true;
+            foreach (var chatView in f_Chats) {
+                if (chatView.LabelWidget.IsDrawable) {
+                    continue;
+                }
+                allTabsVisible = false;
+                break;
+            }
+
+            // DESIGN BUG: when can we really leave compact mode? maybe all tabs
+            // are currently visible, but who knows if that applies to regular
+            // mode too?!?
+            var compactMode = !allTabsVisible;
+            f_Notebook.IsCompactModeEnabled = compactMode;
+            foreach (var chatView in f_Chats) {
+                chatView.IsCompactModeEnabled = compactMode;
+            }
         }
     }
 
