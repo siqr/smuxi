@@ -22,6 +22,7 @@ using System;
 using System.Net;
 using System.Net.Security;
 using System.Web;
+using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Collections.Generic;
@@ -199,6 +200,9 @@ namespace Smuxi.Engine
                     }
                     if (!whitelist.Contains("api.twitter.com")) {
                         whitelist.Add("api.twitter.com");
+                    }
+                    if (!whitelist.Contains("stream.twitter.com")) {
+                        whitelist.Add("stream.twitter.com");
                     }
                 }
             }
@@ -614,6 +618,11 @@ namespace Smuxi.Engine
                             CommandMessage(command);
                             handled = true;
                             break;
+                        case "search":
+                        case "join":
+                            CommandSearch(command);
+                            handled = true;
+                            break;
                     }
                 }
                 switch (command.Command) {
@@ -891,6 +900,39 @@ namespace Smuxi.Engine
             }
          }
 
+        public void CommandSearch(CommandModel cmd)
+        {
+            if (cmd.DataArray.Length < 2) {
+                NotEnoughParameters(cmd);
+                return;
+            }
+
+            var keyword = cmd.Parameter;
+            var chatName = String.Format(_("Search {0}"), keyword);
+            var chat = Session.CreateChat<GroupChatModel>(keyword, chatName, this); 
+            Session.AddChat(chat);
+            var options = CreateOptions<SearchOptions>();
+            options.Count = 50;
+            var response = TwitterSearch.Search(f_OAuthTokens, keyword, options);
+            CheckResponse(response);
+            var search = response.ResponseObject;
+            var sortedSearch = SortTimeline(search);
+            foreach (var status in sortedSearch) {
+                var msg = CreateMessageBuilder().
+                    Append(status, GetPerson(status.User)).
+                    ToMessage();
+                chat.MessageBuffer.Add(msg);
+                var userId = status.User.Id.ToString();
+                if (!chat.UnsafePersons.ContainsKey(userId)) {
+                    chat.UnsafePersons.Add(userId, GetPerson(status.User));
+                }
+            }
+            Session.SyncChat(chat);
+
+            var stream = new TwitterSearchStream(this, chat, keyword,
+                                                 f_OAuthTokens, f_WebProxy);
+        }
+
         private List<TwitterStatus> SortTimeline(TwitterStatusCollection timeline)
         {
             List<TwitterStatus> sortedTimeline =
@@ -911,6 +953,18 @@ namespace Smuxi.Engine
             var sortedTimeline = new List<TwitterDirectMessage>(timeline.Count);
             foreach (TwitterDirectMessage msg in timeline) {
                 sortedTimeline.Add(msg);
+            }
+            sortedTimeline.Sort(
+                (a, b) => (a.CreatedDate.CompareTo(b.CreatedDate))
+            );
+            return sortedTimeline;
+        }
+
+        List<TwitterSearchResult> SortTimeline(TwitterSearchResultCollection timeline)
+        {
+            var sortedTimeline = new List<TwitterSearchResult>(timeline.Count);
+            foreach (var search in timeline) {
+                sortedTimeline.Add(search);
             }
             sortedTimeline.Sort(
                 (a, b) => (a.CreatedDate.CompareTo(b.CreatedDate))
@@ -1579,7 +1633,7 @@ namespace Smuxi.Engine
             return false;
         }
 
-        private PersonModel GetPerson(TwitterUser user)
+        internal PersonModel GetPerson(TwitterUser user)
         {
             if (user == null) {
                 throw new ArgumentNullException("user");
