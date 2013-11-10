@@ -201,6 +201,9 @@ namespace Smuxi.Engine
                     if (!whitelist.Contains("api.twitter.com")) {
                         whitelist.Add("api.twitter.com");
                     }
+                    if (!whitelist.Contains("stream.twitter.com")) {
+                        whitelist.Add("stream.twitter.com");
+                    }
                 }
             }
 
@@ -1069,6 +1072,9 @@ namespace Smuxi.Engine
                 }
             }
             Session.SyncChat(chat);
+
+            var stream = new TwitterSearchStream(this, chat, keyword,
+                                                 f_OAuthTokens, f_WebProxy);
         }
 
         private List<TwitterDirectMessage> SortTimeline(TwitterDirectMessageCollection timeline)
@@ -1744,7 +1750,7 @@ namespace Smuxi.Engine
             return false;
         }
 
-        private PersonModel GetPerson(TwitterUser user)
+        internal PersonModel GetPerson(TwitterUser user)
         {
             if (user == null) {
                 throw new ArgumentNullException("user");
